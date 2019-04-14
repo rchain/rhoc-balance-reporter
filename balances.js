@@ -20,7 +20,7 @@ const fs   = require('fs');
 const Web3 = require('web3');
 const bb   = require('bluebird');
 
-const web3 = new Web3(process.env.ETH_WS || 'wss://mainnet.infura.io/_ws');
+const web3 = new Web3(process.env.ETH_WS || 'wss://mainnet.infura.io/ws');
 const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
 const keys = new Set();
 
