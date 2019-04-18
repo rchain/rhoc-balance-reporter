@@ -6,34 +6,27 @@ there is a contract at that address.
 
 ### Setup
 
-Clone the repo and run npm install from the project root:
+You need Node.js 11.x. Clone the repo and run npm install from the project root:
 
 ```bash
-$ git clone https://github.com/rchain/rchain.git
-$ cd rchain/scripts/pull-rhoc-balances
+$ git clone https://github.com/rchain/rhoc-balance-reporter.git
+$ cd rhoc-balance-reporter
 $ npm install
 ```
 
 ### Generate a RHOC balance report
 
-If you're not running the report for the first time you'll need to remove the
-previous version.
-
-```bash
-$ rm balances.csv
-```
-
-Then run the balances script. Specify options by setting shell variables:
+Specify options by setting shell variables:
 
 ```bash
 BLOCK=<block height>
 ETH_WS=<websockets provider>
 ```
 
-Eth provider defaults to Infura so running a local node is optional.
+Eth provider defaults to local node (`ws://localhost:8546`).
 
 ```bash
-$ BLOCK=6350512 npm run balances
+$ BLOCK=7588056 node balances >wallets_7588056.txt
 ```
 
 ### Improvements
