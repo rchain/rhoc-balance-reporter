@@ -18,11 +18,12 @@
 
 const Web3 = require('web3');
 
-const web3 = new Web3(process.env.ETH_WS || 'ws://localhost:8546')
-const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
-
+const apiUrl    = process.env.ETH_WS || 'http://localhost:8545'
 const fromBlock = 3383352;
 const toBlock	= process.env.BLOCK || 7588056;
+
+const web3 = new Web3(apiUrl)
+const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
 
 async function* getKeys() {
 	let keys = new Set()
