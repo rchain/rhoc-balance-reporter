@@ -47,9 +47,6 @@ async function* getBalances() {
 }
 
 (async () => {
-	let timerId = setInterval(async () => {
-		await web3.eth.isSyncing()
-	}, 1000)
 	try {
 		for await ([key, bal, c] of getBalances()) {
 			process.stdout.write(key + ',' + bal + ',' + c + '\n')
@@ -57,7 +54,6 @@ async function* getBalances() {
 	} catch (e) {
 		console.error(e)
 	} finally {
-		clearInterval(timerId)
 		process.exit()
 	}
 })();
