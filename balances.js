@@ -42,8 +42,10 @@ async function* getKeys() {
 async function* getBalances() {
 	for await (key of getKeys()) {
 		let bal = await rhoc.methods.balanceOf(key).call({}, toBlock)
-		let c = await web3.eth.getCode(key).then(code => code == '0x' ? 0 : 1)
-		yield [key, bal, c]
+		if (bal > 0) {
+			let c = await web3.eth.getCode(key).then(code => code == '0x' ? 0 : 1)
+			yield [key, bal, c]
+		}
 	}
 }
 
