@@ -18,7 +18,7 @@
 
 const Web3 = require('web3');
 
-const apiUrl    = process.env.ETH_WS || 'http://localhost:8545'
+const apiUrl    = process.env.ETH_API_URL || process.env.ETH_WS || 'http://localhost:8545'
 const fromBlock = 3383352;
 const toBlock	= process.env.BLOCK || 7588056;
 

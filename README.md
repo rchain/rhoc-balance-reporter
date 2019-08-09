@@ -23,10 +23,10 @@ Specify options by setting shell variables:
 
 ```bash
 BLOCK=<block height>
-ETH_WS=<websockets provider>
+ETH_API_URL=<http provider>
 ```
 
-Eth provider defaults to local node (`ws://localhost:8546`).
+Eth provider defaults to local node (`http://localhost:8545`).
 
 ```bash
 $ BLOCK=7588056 node balances >wallets_7588056.txt
