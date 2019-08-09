@@ -47,13 +47,15 @@ async function* getBalances() {
 }
 
 (async () => {
+	let exitCode = 0
 	try {
 		for await ([key, bal, c] of getBalances()) {
 			process.stdout.write(key + ',' + bal + ',' + c + '\n')
 		}
 	} catch (e) {
 		console.error(e)
+		exitCode = 1
 	} finally {
-		process.exit()
+		process.exit(exitCode)
 	}
 })();
