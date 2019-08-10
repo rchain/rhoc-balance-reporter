@@ -18,14 +18,18 @@
 
 const Web3 = require('web3');
 
+const deployAddr       = '0x168296bb09e24a88805cb9c33356536b980d3fc5'
+const deployBlock      = 3383352
+const tokenMintAddr    = '0xe17C20292b2F1b0Ff887Dc32A73C259Fae25f03B'
+const tokenSupply      = 100000000000000000
+
 const apiUrl    = process.env.ETH_API_URL || process.env.ETH_WS || 'http://localhost:8545'
-const fromBlock = 3383352;
 const toBlock	= process.env.BLOCK || 'latest';
 const dumpXfers = !!process.env.DUMP_XFERS
 const chunkSize = 500
 
 const web3 = new Web3(apiUrl)
-const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
+const rhoc = new web3.eth.Contract(require('./abi.json'), deployAddr);
 
 async function* getTransferEvents(_fromBlock, _toBlock) {
 
@@ -55,6 +59,7 @@ async function* getTransferEvents(_fromBlock, _toBlock) {
 
 async function* getNetBalances(xferEventsIter) {
 	let balances = new Map()
+	balances[tokenMintAddr] = BigInt(tokenSupply)
 
 	for await (ev of xferEventsIter) {
 		let xfer = ev.returnValues
@@ -78,7 +83,7 @@ async function* getNetBalances(xferEventsIter) {
 (async () => {
 	let exitCode = 0
 	try {
-		let xferEventsIter = getTransferEvents(fromBlock, toBlock)
+		let xferEventsIter = getTransferEvents(deployBlock, toBlock)
 		if (dumpXfers) {
 			for await (xferEvent of xferEventsIter) {
 				console.log(JSON.stringify(xferEvent))
