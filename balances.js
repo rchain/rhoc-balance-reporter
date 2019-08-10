@@ -54,7 +54,7 @@ async function* getTransferEvents(_fromBlock, _toBlock) {
 }
 
 async function* getNetBalances(xferEventsIter) {
-	let balances = {}
+	let balances = new Map()
 
 	for await (ev of xferEventsIter) {
 		let xfer = ev.returnValues
