@@ -21,30 +21,47 @@ const Web3 = require('web3');
 const apiUrl    = process.env.ETH_API_URL || process.env.ETH_WS || 'http://localhost:8545'
 const fromBlock = 3383352;
 const toBlock	= process.env.BLOCK || 7588056;
+const chunkSize = 500
 
 const web3 = new Web3(apiUrl)
 const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
 
-async function* getKeys() {
-	let keys = new Set()
-	function* addKey(k) {
-		if (!keys.has(k)) {
-			keys.add(k)
-			yield k
-		}
+async function* getTransfers(_fromBlock, _toBlock) {
+
+	async function* getTransfersInRange(fromBlock, toBlock) {
+		for (t of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock } ))
+			yield t.returnValues
 	}
-	for (t of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock })) {
-		yield* addKey(t.returnValues.from)
-		yield* addKey(t.returnValues.to)
+
+	let count = _toBlock - _fromBlock + 1
+
+	let iters = Math.floor(count / chunkSize)
+	for (let i = 0; i < iters; i++) {
+		let fromBlock = _fromBlock + i * chunkSize
+		let toBlock   = _fromBlock + (i + 1) * chunkSize - 1
+		yield* getTransfersInRange(fromBlock, toBlock)
 	}
+
+	let fromBlock = _toBlock - count % chunkSize + 1
+	if (fromBlock <= _toBlock)
+		yield* getTransferEventsInRange(fromBlock, _toBlock)
 }
 
-async function* getBalances() {
-	for await (key of getKeys()) {
-		let bal = await rhoc.methods.balanceOf(key).call({}, toBlock)
+async function* getBalances(fromBlock, toBlock) {
+	let balances = {}
+
+	for await (let xfer of getTransfers(fromBlock, toBlock)) {
+		let amount  = BigInt(xfer.value)
+		let fromBal = balances[xfer.from] || 0n // BigInt(0)
+		let toBal   = balances[xfer.to]   || 0n
+		balances[xfer.from] = fromBal - amount
+		balances[xfer.to]   = toBal   + amount
+	}
+
+	for (let [addr, bal] of Object.entries(balances)) {
 		if (bal > 0) {
-			let c = await web3.eth.getCode(key).then(code => code == '0x' ? 0 : 1)
-			yield [key, bal, c]
+			let c = await web3.eth.getCode(addr).then(code => code == '0x' ? 0 : 1)
+			yield [addr, bal, c]
 		}
 	}
 }
@@ -52,8 +69,8 @@ async function* getBalances() {
 (async () => {
 	let exitCode = 0
 	try {
-		for await ([key, bal, c] of getBalances()) {
-			process.stdout.write(key + ',' + bal + ',' + c + '\n')
+		for await ([addr, bal, c] of getBalances(fromBlock, toBlock)) {
+			process.stdout.write(addr + ',' + bal + ',' + c + '\n')
 		}
 	} catch (e) {
 		console.error(e)
