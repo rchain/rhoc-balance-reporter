@@ -26,11 +26,16 @@ const chunkSize = 500
 const web3 = new Web3(apiUrl)
 const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
 
-async function* getTransfers(_fromBlock, _toBlock) {
+async function* getTransferEvents(_fromBlock, _toBlock) {
 
-	async function* getTransfersInRange(fromBlock, toBlock) {
-		for (t of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock } ))
-			yield t.returnValues
+	async function* getTransferEventsInRange(fromBlock, toBlock) {
+		for (ev of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock } )) {
+			if (ev.blockNumber === null) {
+				console.warning('Got pending transfer event, skipping...')
+				continue
+			}
+			yield ev
+		}
 	}
 
 	let count = _toBlock - _fromBlock + 1
@@ -39,7 +44,7 @@ async function* getTransfers(_fromBlock, _toBlock) {
 	for (let i = 0; i < iters; i++) {
 		let fromBlock = _fromBlock + i * chunkSize
 		let toBlock   = _fromBlock + (i + 1) * chunkSize - 1
-		yield* getTransfersInRange(fromBlock, toBlock)
+		yield* getTransferEventsInRange(fromBlock, toBlock)
 	}
 
 	let fromBlock = _toBlock - count % chunkSize + 1
@@ -50,7 +55,8 @@ async function* getTransfers(_fromBlock, _toBlock) {
 async function* getBalances(fromBlock, toBlock) {
 	let balances = {}
 
-	for await (let xfer of getTransfers(fromBlock, toBlock)) {
+	for await (ev of getTransferEvents(fromBlock, toBlock)) {
+		let xfer    = ev.returnValues
 		let amount  = BigInt(xfer.value)
 		let fromBal = balances[xfer.from] || 0n // BigInt(0)
 		let toBal   = balances[xfer.to]   || 0n
@@ -58,7 +64,7 @@ async function* getBalances(fromBlock, toBlock) {
 		balances[xfer.to]   = toBal   + amount
 	}
 
-	for (let [addr, bal] of Object.entries(balances)) {
+	for ([addr, bal] of Object.entries(balances)) {
 		if (bal > 0) {
 			let c = await web3.eth.getCode(addr).then(code => code == '0x' ? 0 : 1)
 			yield [addr, bal, c]
