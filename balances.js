@@ -26,7 +26,7 @@ const tokenSupply      = 100000000000000000
 const apiUrl    = process.env.ETH_API_URL || process.env.ETH_WS || 'http://localhost:8545'
 const toBlock	= process.env.BLOCK || 'latest';
 const dumpXfers = !!process.env.DUMP_XFERS
-const chunkSize = 500
+const chunkSize = process.env.CHUNK_SIZE || 1000000
 
 const web3 = new Web3(apiUrl)
 const rhoc = new web3.eth.Contract(require('./abi.json'), deployAddr);
