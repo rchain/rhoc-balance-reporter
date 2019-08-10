@@ -52,10 +52,10 @@ async function* getTransferEvents(_fromBlock, _toBlock) {
 		yield* getTransferEventsInRange(fromBlock, _toBlock)
 }
 
-async function* getBalances(fromBlock, toBlock) {
+async function* getNetBalances(xferEventsIter) {
 	let balances = {}
 
-	for await (ev of getTransferEvents(fromBlock, toBlock)) {
+	for await (ev of xferEventsIter) {
 		let xfer    = ev.returnValues
 		let amount  = BigInt(xfer.value)
 		let fromBal = balances[xfer.from] || 0n // BigInt(0)
@@ -75,7 +75,8 @@ async function* getBalances(fromBlock, toBlock) {
 (async () => {
 	let exitCode = 0
 	try {
-		for await ([addr, bal, c] of getBalances(fromBlock, toBlock)) {
+		let xferEvents = getTransferEvents(fromBlock, toBlock)
+		for await ([addr, bal, c] of getNetBalances(xferEvents)) {
 			process.stdout.write(addr + ',' + bal + ',' + c + '\n')
 		}
 	} catch (e) {
