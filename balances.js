@@ -21,6 +21,7 @@ const Web3 = require('web3');
 const apiUrl    = process.env.ETH_API_URL || process.env.ETH_WS || 'http://localhost:8545'
 const fromBlock = 3383352;
 const toBlock	= process.env.BLOCK || 'latest';
+const dumpXfers = !!process.env.DUMP_XFERS
 const chunkSize = 500
 
 const web3 = new Web3(apiUrl)
@@ -75,9 +76,15 @@ async function* getNetBalances(xferEventsIter) {
 (async () => {
 	let exitCode = 0
 	try {
-		let xferEvents = getTransferEvents(fromBlock, toBlock)
-		for await ([addr, bal, c] of getNetBalances(xferEvents)) {
-			process.stdout.write(addr + ',' + bal + ',' + c + '\n')
+		let xferEventsIter = getTransferEvents(fromBlock, toBlock)
+		if (dumpXfers) {
+			for await (xferEvent of xferEventsIter) {
+				console.log(JSON.stringify(xferEvent))
+			}
+		} else {
+			for await ([addr, bal, c] of getNetBalances(xferEventsIter)) {
+				process.stdout.write(addr + ',' + bal + ',' + c + '\n')
+			}
 		}
 	} catch (e) {
 		console.error(e)
