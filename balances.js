@@ -57,7 +57,9 @@ async function* getNetBalances(xferEventsIter) {
 	let balances = {}
 
 	for await (ev of xferEventsIter) {
-		let xfer    = ev.returnValues
+		let xfer = ev.returnValues
+		if (xfer.from === xfer.to)
+			continue
 		let amount  = BigInt(xfer.value)
 		let fromBal = balances[xfer.from] || 0n // BigInt(0)
 		let toBal   = balances[xfer.to]   || 0n
