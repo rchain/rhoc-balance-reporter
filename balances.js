@@ -31,7 +31,7 @@ const chunkSize = 500
 const web3 = new Web3(apiUrl)
 const rhoc = new web3.eth.Contract(require('./abi.json'), deployAddr);
 
-async function* getTransferEvents(_fromBlock, _toBlock) {
+async function* getTransferEvents(_toBlock) {
 
 	async function* getTransferEventsInRange(fromBlock, toBlock) {
 		for (ev of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock } )) {
@@ -43,12 +43,12 @@ async function* getTransferEvents(_fromBlock, _toBlock) {
 		}
 	}
 
-	let count = _toBlock - _fromBlock + 1
+	let count = _toBlock - deployBlock + 1
 
 	let iters = Math.floor(count / chunkSize)
 	for (let i = 0; i < iters; i++) {
-		let fromBlock = _fromBlock + i * chunkSize
-		let toBlock   = _fromBlock + (i + 1) * chunkSize - 1
+		let fromBlock = deployBlock + i * chunkSize
+		let toBlock   = deployBlock + (i + 1) * chunkSize - 1
 		yield* getTransferEventsInRange(fromBlock, toBlock)
 	}
 
@@ -83,7 +83,7 @@ async function* getNetBalances(xferEventsIter) {
 (async () => {
 	let exitCode = 0
 	try {
-		let xferEventsIter = getTransferEvents(deployBlock, toBlock)
+		let xferEventsIter = getTransferEvents(toBlock)
 		if (dumpXfers) {
 			for await (xferEvent of xferEventsIter) {
 				console.log(JSON.stringify(xferEvent))
