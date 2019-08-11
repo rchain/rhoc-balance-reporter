@@ -35,3 +35,11 @@ $ BLOCK=7588056 node balances >wallets_7588056.txt
 ### Improvements
 
 * Timestamp balances.csv output so that it can be included in version control.
+
+### Note from new maintainer
+
+This tool was originally written by @desaperados
+(https://github.com/desaperados/rrc). It used to call `balanceOf()`
+contract method to get address balances. This however doesn't work
+with older blocks (as right bound) when querying a state pruning node
+like Parity. This rewrite calculates balances by netting transfers.
