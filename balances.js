@@ -39,6 +39,9 @@ async function* getTransferEvents(_toBlock) {
 				console.warning('Got pending transfer event, skipping...')
 				continue
 			}
+			if (ev.removed) {
+				throw 'Got unexpected removed transfer event: ' + JSON.stringify(ev)
+			}
 			yield ev
 		}
 	}
