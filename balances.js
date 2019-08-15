@@ -18,46 +18,88 @@
 
 const Web3 = require('web3');
 
-const web3 = new Web3(process.env.ETH_WS || 'ws://localhost:8546')
-const rhoc = new web3.eth.Contract(require('./abi.json'), "0x168296bb09e24a88805cb9c33356536b980d3fc5");
+const deployAddr       = '0x168296bb09e24a88805cb9c33356536b980d3fc5'
+const deployBlock      = 3383352
+const tokenMintAddr    = '0xe17C20292b2F1b0Ff887Dc32A73C259Fae25f03B'
+const tokenSupply      = 100000000000000000
 
-const fromBlock = 3383352;
-const toBlock	= process.env.BLOCK || 7588056;
+const apiUrl    = process.env.ETH_API_URL || process.env.ETH_WS || 'http://localhost:8545'
+const toBlock	= process.env.BLOCK || 'latest';
+const dumpXfers = !!process.env.DUMP_XFERS
+const chunkSize = process.env.CHUNK_SIZE || 1000000
 
-async function* getKeys() {
-	let keys = new Set()
-	function* addKey(k) {
-		if (!keys.has(k)) {
-			keys.add(k)
-			yield k
+const web3 = new Web3(apiUrl)
+const rhoc = new web3.eth.Contract(require('./abi.json'), deployAddr);
+
+async function* getTransferEvents(_toBlock) {
+
+	async function* getTransferEventsInRange(fromBlock, toBlock) {
+		for (ev of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock } )) {
+			if (ev.blockNumber === null) {
+				console.warning('Got pending transfer event, skipping...')
+				continue
+			}
+			if (ev.removed) {
+				throw 'Got unexpected removed transfer event: ' + JSON.stringify(ev)
+			}
+			yield ev
 		}
 	}
-	for (t of await rhoc.getPastEvents('Transfer', { fromBlock, toBlock })) {
-		yield* addKey(t.returnValues.from)
-		yield* addKey(t.returnValues.to)
+
+	let count = _toBlock - deployBlock + 1
+
+	let iters = Math.floor(count / chunkSize)
+	for (let i = 0; i < iters; i++) {
+		let fromBlock = deployBlock + i * chunkSize
+		let toBlock   = deployBlock + (i + 1) * chunkSize - 1
+		yield* getTransferEventsInRange(fromBlock, toBlock)
 	}
+
+	let fromBlock = _toBlock - count % chunkSize + 1
+	if (fromBlock <= _toBlock)
+		yield* getTransferEventsInRange(fromBlock, _toBlock)
 }
 
-async function* getBalances() {
-	for await (key of getKeys()) {
-		let bal = await rhoc.methods.balanceOf(key).call({}, toBlock)
-		let c = await web3.eth.getCode(key).then(code => code == '0x' ? 0 : 1)
-		yield [key, bal, c]
+async function* getNetBalances(xferEventsIter) {
+	let balances = new Map()
+	balances[tokenMintAddr] = BigInt(tokenSupply)
+
+	for await (ev of xferEventsIter) {
+		let xfer = ev.returnValues
+		if (xfer.from === xfer.to)
+			continue
+		let amount  = BigInt(xfer.value)
+		let fromBal = balances[xfer.from] || 0n // BigInt(0)
+		let toBal   = balances[xfer.to]   || 0n
+		balances[xfer.from] = fromBal - amount
+		balances[xfer.to]   = toBal   + amount
+	}
+
+	for ([addr, bal] of Object.entries(balances)) {
+		if (bal > 0) {
+			let c = await web3.eth.getCode(addr).then(code => code == '0x' ? 0 : 1)
+			yield [addr, bal, c]
+		}
 	}
 }
 
 (async () => {
-	let timerId = setInterval(async () => {
-		await web3.eth.isSyncing()
-	}, 1000)
+	let exitCode = 0
 	try {
-		for await ([key, bal, c] of getBalances()) {
-			process.stdout.write(key + ',' + bal + ',' + c + '\n')
+		let xferEventsIter = getTransferEvents(toBlock)
+		if (dumpXfers) {
+			for await (xferEvent of xferEventsIter) {
+				console.log(JSON.stringify(xferEvent))
+			}
+		} else {
+			for await ([addr, bal, c] of getNetBalances(xferEventsIter)) {
+				process.stdout.write(addr + ',' + bal + ',' + c + '\n')
+			}
 		}
 	} catch (e) {
 		console.error(e)
+		exitCode = 1
 	} finally {
-		clearInterval(timerId)
-		process.exit()
+		process.exit(exitCode)
 	}
 })();
